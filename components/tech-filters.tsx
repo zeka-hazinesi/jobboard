@@ -1,32 +1,54 @@
-import { Badge } from "@/components/ui/badge"
+"use client";
+
+import { useState } from "react";
+import { Badge } from "@/components/ui/badge";
 
 const techStack = [
-  { name: "C/C++", icon: "🔷", color: "bg-blue-100 text-blue-800" },
-  { name: "C#.NET", icon: "🔷", color: "bg-purple-100 text-purple-800" },
-  { name: "Data", icon: "📊", color: "bg-red-100 text-red-800" },
-  { name: "Golang", icon: "🐹", color: "bg-cyan-100 text-cyan-800" },
-  { name: "Java", icon: "☕", color: "bg-orange-100 text-orange-800" },
-  { name: "JavaScript", icon: "🟨", color: "bg-yellow-100 text-yellow-800" },
-  { name: "Mobile", icon: "📱", color: "bg-green-100 text-green-800" },
-  { name: "PHP", icon: "🐘", color: "bg-indigo-100 text-indigo-800" },
-  { name: "Python", icon: "🐍", color: "bg-blue-100 text-blue-800" },
-  { name: "Ruby", icon: "💎", color: "bg-red-100 text-red-800" },
-  { name: "SAP", icon: "🔷", color: "bg-blue-100 text-blue-800" },
-]
+  { name: "C/C++", icon: "🔷" },
+  { name: "C#.NET", icon: "🔷" },
+  { name: "Data", icon: "📊" },
+  { name: "Golang", icon: "🐹" },
+  { name: "Java", icon: "☕" },
+  { name: "JavaScript", icon: "🟨" },
+  { name: "Mobile", icon: "📱" },
+  { name: "PHP", icon: "🐘" },
+  { name: "Python", icon: "🐍" },
+  { name: "Ruby", icon: "💎" },
+  { name: "SAP", icon: "🔷" },
+];
 
 export function TechFilters() {
+  const [selectedTech, setSelectedTech] = useState<string | null>(null);
+
+  const handleTechClick = (techName: string) => {
+    setSelectedTech(selectedTech === techName ? null : techName);
+  };
+
   return (
     <div className="flex flex-wrap gap-2 mb-4">
-      {techStack.map((tech) => (
-        <Badge
-          key={tech.name}
-          variant="secondary"
-          className={`${tech.color} cursor-pointer hover:opacity-80 transition-opacity`}
-        >
-          <span className="mr-1">{tech.icon}</span>
-          {tech.name}
-        </Badge>
-      ))}
+      {techStack.map((tech) => {
+        const isSelected = selectedTech === tech.name;
+        const isAnySelected = selectedTech !== null;
+        const shouldBeGrey = isAnySelected && !isSelected;
+
+        return (
+          <Badge
+            key={tech.name}
+            variant="secondary"
+            className={`cursor-pointer transition-all duration-200 hover:opacity-80 ${
+              shouldBeGrey
+                ? "bg-gray-200 text-gray-500"
+                : isSelected
+                  ? "bg-blue-500 text-white"
+                  : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+            }`}
+            onClick={() => handleTechClick(tech.name)}
+          >
+            <span className="mr-1">{tech.icon}</span>
+            {tech.name}
+          </Badge>
+        );
+      })}
     </div>
-  )
+  );
 }

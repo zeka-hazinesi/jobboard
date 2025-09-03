@@ -1,6 +1,6 @@
-import { Card, CardContent } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
-import { Heart, MapPin, Building } from "lucide-react"
+import { Card, CardContent } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { MapPin, Building } from "lucide-react";
 
 const jobs = [
   {
@@ -57,26 +57,31 @@ const jobs = [
     tags: ["C#", "Confluence", "Git"],
     logo: "/placeholder-ww0if.png",
   },
-]
+];
 
 export function JobListings() {
   return (
     <div className="space-y-4">
       {jobs.map((job) => (
-        <Card key={job.id} className="hover:shadow-md transition-shadow cursor-pointer">
+        <Card
+          key={job.id}
+          className="hover:shadow-md transition-shadow cursor-pointer"
+        >
           <CardContent className="p-4">
             <div className="flex items-start justify-between">
               <div className="flex items-start space-x-3 flex-1">
                 <img
-                  src={job.logo || "/placeholder.svg"}
-                  alt={`${job.company} logo`}
+                  src="/globe.svg"
+                  alt="Globe"
                   className="w-10 h-10 rounded object-cover"
                 />
 
                 <div className="flex-1">
                   <div className="flex items-start justify-between">
                     <div>
-                      <h3 className="font-semibold text-card-foreground hover:text-primary">{job.title}</h3>
+                      <h3 className="font-semibold text-card-foreground hover:text-primary">
+                        {job.title}
+                      </h3>
 
                       <div className="flex items-center text-sm text-muted-foreground mt-1">
                         <Building className="w-4 h-4 mr-1" />
@@ -88,7 +93,11 @@ export function JobListings() {
                       {job.tags.length > 0 && (
                         <div className="flex flex-wrap gap-1 mt-2">
                           {job.tags.map((tag) => (
-                            <Badge key={tag} variant="secondary" className="text-xs">
+                            <Badge
+                              key={tag}
+                              variant="secondary"
+                              className="text-xs"
+                            >
                               {tag}
                             </Badge>
                           ))}
@@ -97,8 +106,9 @@ export function JobListings() {
                     </div>
 
                     <div className="text-right">
-                      <div className="text-green-600 font-semibold text-sm">{job.salary}</div>
-                      <Heart className="w-5 h-5 text-muted-foreground hover:text-red-500 cursor-pointer mt-2 ml-auto" />
+                      <div className="text-green-600 font-semibold text-sm">
+                        {job.salary}
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -108,5 +118,5 @@ export function JobListings() {
         </Card>
       ))}
     </div>
-  )
+  );
 }
