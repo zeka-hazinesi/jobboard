@@ -41,7 +41,7 @@ export function JobListings() {
 
   if (loading) {
     return (
-      <div className="h-[calc(100vh-200px)] overflow-y-auto">
+      <div className="h-full overflow-y-auto">
         <div className="space-y-4 p-4">
           {[...Array(6)].map((_, i) => (
             <Card key={i} className="animate-pulse">
@@ -67,14 +67,14 @@ export function JobListings() {
 
   if (error) {
     return (
-      <div className="h-[calc(100vh-200px)] flex items-center justify-center">
+      <div className="h-full flex items-center justify-center">
         <p className="text-red-600">Error loading jobs: {error}</p>
       </div>
     );
   }
 
   return (
-    <div className="h-[calc(100vh-200px)] overflow-y-auto">
+    <div className="h-full overflow-y-auto">
       <div className="space-y-4 p-4">
         {jobs.map((job) => (
           <Card
