@@ -1,3 +1,4 @@
+@import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700&display=swap');
 @import "tailwindcss";
 @import "tw-animate-css";
 
@@ -10,7 +11,7 @@
   --card-foreground: #374151;
   --popover: #ffffff;
   --popover-foreground: #1f2937;
-  --primary: #2563eb;
+  --primary: #1065bb;
   --primary-foreground: #ffffff;
   --secondary: #6366f1;
   --secondary-foreground: #ffffff;
@@ -75,7 +76,7 @@
 }
 
 @theme inline {
-  --font-sans: var(--font-geist-sans);
+  --font-sans: "Nunito", var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
   --color-background: var(--background);
   --color-foreground: var(--foreground);

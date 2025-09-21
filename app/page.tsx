@@ -1,31 +1,73 @@
+"use client";
+
+import { useState } from "react";
 import { Header } from "@/components/header";
-import { TechFilters } from "@/components/tech-filters";
 import { LocationFilters } from "@/components/location-filters";
 import { JobListings } from "@/components/job-listings";
 import { SwissMap } from "@/components/swiss-map";
 
+interface Location {
+  name: string;
+  latitude: number;
+  longitude: number;
+}
+
 export default function HomePage() {
+  const [selectedLocation, setSelectedLocation] = useState<Location | null>(null);
+  const [hoveredJobId, setHoveredJobId] = useState<string | null>(null);
+  const [selectedJobId, setSelectedJobId] = useState<string | null>(null);
+
+  const handleLocationClick = (location: Location | null) => {
+    setSelectedLocation(location);
+  };
+
+  const handleJobClick = (jobId: string) => {
+    setSelectedJobId(jobId);
+  };
   return (
-    <div className="h-screen bg-background flex flex-col">
+    <div className="h-screen bg-gray-50 flex flex-col">
       <Header />
 
-      <main className="flex-1 container mx-auto px-4 py-6 overflow-hidden">
-        <div className="mb-6">
-          <h1 className="text-2xl font-bold text-foreground mb-4">
-            IT & Softwareentwickler Stellenangebote in der Schweiz
-          </h1>
+      <main className="flex-1 w-full px-4 py-6 overflow-hidden">
+        <div className="grid grid-cols-1 lg:grid-cols-5 gap-6 h-full w-full">
+          {/* Left side: Title, Filters and Job List */}
+          <div className="lg:col-span-3 space-y-4 overflow-hidden flex flex-col">
+            {/* Title Section */}
+            <div className="flex-shrink-0">
+              <h1 className="text-xl font-bold font-nunito text-[#1065bb] mb-3">
+                Jobs in der Schweiz
+              </h1>
+            </div>
 
-          <TechFilters />
-          <LocationFilters />
-        </div>
+            {/* Filters Section */}
+            <div className="flex-shrink-0">
+              <LocationFilters
+                onLocationClick={handleLocationClick}
+                selectedLocationName={selectedLocation?.name || null}
+              />
+            </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 h-full">
-          <div className="space-y-4 overflow-hidden">
-            <JobListings />
+            {/* Job List Section */}
+            <div className="flex-1 overflow-hidden">
+              <JobListings
+                selectedLocation={selectedLocation}
+                hoveredJobId={hoveredJobId}
+                onJobHover={setHoveredJobId}
+                selectedJobId={selectedJobId}
+              />
+            </div>
           </div>
 
-          <div className="h-full">
-            <SwissMap />
+          {/* Right side: Map */}
+          <div className="lg:col-span-2 h-full">
+            <SwissMap
+              centerCoordinates={selectedLocation ? [selectedLocation.latitude, selectedLocation.longitude] : null}
+              selectedLocationName={selectedLocation?.name || null}
+              zoomLevel={selectedLocation ? 11 : 8}
+              hoveredJobId={hoveredJobId}
+              onJobHover={setHoveredJobId}
+              onJobClick={handleJobClick}
+            />
           </div>
         </div>
       </main>
