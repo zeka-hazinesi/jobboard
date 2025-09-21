@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, memo, useCallback, useMemo } from "react";
 
 interface Location {
   name: string;
@@ -26,10 +26,10 @@ interface LocationFiltersProps {
   selectedLocationName?: string | null;
 }
 
-export function LocationFilters({ onLocationClick, selectedLocationName }: LocationFiltersProps) {
+export const LocationFilters = memo(function LocationFilters({ onLocationClick, selectedLocationName }: LocationFiltersProps) {
   const [selectedLocation, setSelectedLocation] = useState<string | null>(null);
 
-  const handleLocationClick = (locationName: string) => {
+  const handleLocationClick = useCallback((locationName: string) => {
     const newSelectedLocation = selectedLocation === locationName ? null : locationName;
     setSelectedLocation(newSelectedLocation);
 
@@ -40,35 +40,41 @@ export function LocationFilters({ onLocationClick, selectedLocationName }: Locat
         : null;
       onLocationClick(location);
     }
-  };
+  }, [selectedLocation, onLocationClick]);
+
+  // Memoize location buttons to prevent unnecessary re-renders
+  const locationButtons = useMemo(() =>
+    locations.map((location) => {
+      const isSelected = selectedLocation === location.name;
+      const isAnySelected = selectedLocation !== null;
+      const shouldBeGrey = isAnySelected && !isSelected;
+      const isFocused = selectedLocationName === location.name;
+
+      return (
+        <button
+          key={location.name}
+          className={`cursor-pointer transition-all duration-300 font-nunito font-medium text-sm px-4 py-2 rounded-lg border-2 ${
+            isFocused
+              ? "bg-blue-600 text-white border-blue-600 shadow-md"
+              : shouldBeGrey
+                ? "bg-gray-100 text-gray-400 border-gray-200"
+                : isSelected
+                  ? "bg-[#1065bb] text-white border-[#1065bb] shadow-md"
+                  : "bg-white text-gray-700 border-gray-200 hover:border-[#1065bb] hover:bg-blue-50 hover:text-[#1065bb]"
+          }`}
+          onClick={() => handleLocationClick(location.name)}
+        >
+          <span className="mr-2">{isFocused ? "📍" : ""}</span>
+          {location.name}
+        </button>
+      );
+    }),
+    [selectedLocation, selectedLocationName, handleLocationClick]
+  );
 
   return (
     <div className="flex flex-wrap gap-2 mb-4">
-      {locations.map((location) => {
-        const isSelected = selectedLocation === location.name;
-        const isAnySelected = selectedLocation !== null;
-        const shouldBeGrey = isAnySelected && !isSelected;
-        const isFocused = selectedLocationName === location.name;
-
-        return (
-          <button
-            key={location.name}
-            className={`cursor-pointer transition-all duration-300 font-nunito font-medium text-sm px-4 py-2 rounded-lg border-2 ${
-              isFocused
-                ? "bg-blue-600 text-white border-blue-600 shadow-md"
-                : shouldBeGrey
-                  ? "bg-gray-100 text-gray-400 border-gray-200"
-                  : isSelected
-                    ? "bg-[#1065bb] text-white border-[#1065bb] shadow-md"
-                    : "bg-white text-gray-700 border-gray-200 hover:border-[#1065bb] hover:bg-blue-50 hover:text-[#1065bb]"
-            }`}
-            onClick={() => handleLocationClick(location.name)}
-          >
-            <span className="mr-2">{isFocused ? "📍" : ""}</span>
-            {location.name}
-          </button>
-        );
-      })}
+      {locationButtons}
     </div>
   );
-}
+});

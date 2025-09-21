@@ -45,6 +45,31 @@ class JobDatabase {
   private db: any = null;
   private sqlite3: any = null;
   private initialized = false;
+  private searchCache = new Map<string, { results: TransformedJob[], timestamp: number }>();
+  private readonly CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+
+  private getCacheKey(query: string, locationName?: string): string {
+    return locationName ? `${query}:${locationName}` : query;
+  }
+
+  private getCachedResults(key: string): TransformedJob[] | null {
+    const cached = this.searchCache.get(key);
+    if (cached && Date.now() - cached.timestamp < this.CACHE_TTL) {
+      return cached.results;
+    }
+    if (cached) {
+      this.searchCache.delete(key);
+    }
+    return null;
+  }
+
+  private setCachedResults(key: string, results: TransformedJob[]): void {
+    this.searchCache.set(key, { results, timestamp: Date.now() });
+  }
+
+  private clearCache(): void {
+    this.searchCache.clear();
+  }
 
   async init(): Promise<void> {
     if (this.initialized) return;
@@ -116,6 +141,41 @@ class JobDatabase {
       CREATE INDEX IF NOT EXISTS idx_locations_city ON locations(city);
       CREATE INDEX IF NOT EXISTS idx_locations_coordinates ON locations(latitude, longitude);
       CREATE INDEX IF NOT EXISTS idx_locations_postal_code ON locations(postal_code);
+    `);
+
+    // Create full-text search table for better search performance
+    this.db.exec(`
+      CREATE VIRTUAL TABLE IF NOT EXISTS jobs_fts USING fts5(
+        title, company, categories,
+        content='jobs',
+        content_rowid='rowid'
+      )
+    `);
+
+    // Populate FTS table
+    this.db.exec(`
+      INSERT OR REPLACE INTO jobs_fts(rowid, title, company, categories)
+      SELECT rowid, title, company, categories FROM jobs
+    `);
+
+    // Create triggers to keep FTS table in sync
+    this.db.exec(`
+      CREATE TRIGGER IF NOT EXISTS jobs_fts_insert AFTER INSERT ON jobs BEGIN
+        INSERT INTO jobs_fts(rowid, title, company, categories) VALUES (new.rowid, new.title, new.company, new.categories);
+      END
+    `);
+
+    this.db.exec(`
+      CREATE TRIGGER IF NOT EXISTS jobs_fts_delete AFTER DELETE ON jobs BEGIN
+        INSERT INTO jobs_fts(jobs_fts, rowid, title, company, categories) VALUES('delete', old.rowid, old.title, old.company, old.categories);
+      END
+    `);
+
+    this.db.exec(`
+      CREATE TRIGGER IF NOT EXISTS jobs_fts_update AFTER UPDATE ON jobs BEGIN
+        INSERT INTO jobs_fts(jobs_fts, rowid, title, company, categories) VALUES('delete', old.rowid, old.title, old.company, old.categories);
+        INSERT INTO jobs_fts(rowid, title, company, categories) VALUES (new.rowid, new.title, new.company, new.categories);
+      END
     `);
   }
 
@@ -315,7 +375,16 @@ class JobDatabase {
   async searchJobs(query: string): Promise<TransformedJob[]> {
     if (!this.initialized) await this.init();
 
+    // Check cache first
+    const cacheKey = this.getCacheKey(query);
+    const cachedResults = this.getCachedResults(cacheKey);
+    if (cachedResults) {
+      return cachedResults;
+    }
+
     const results: TransformedJob[] = [];
+
+    // Use FTS for faster search
     const stmt = this.db.prepare(`
       SELECT
         j.id,
@@ -328,21 +397,19 @@ class JobDatabase {
         l.address,
         l.latitude,
         l.longitude,
-        ROW_NUMBER() OVER (PARTITION BY j.id ORDER BY l.id) as location_rank
+        ROW_NUMBER() OVER (PARTITION BY j.id ORDER BY l.id) as location_rank,
+        j.rowid
       FROM jobs j
+      INNER JOIN jobs_fts ON jobs_fts.rowid = j.rowid
       INNER JOIN locations l ON j.id = l.job_id
       WHERE l.latitude IS NOT NULL AND l.longitude IS NOT NULL
-        AND (
-          LOWER(j.title) LIKE LOWER(?) OR
-          LOWER(j.company) LIKE LOWER(?) OR
-          LOWER(j.categories) LIKE LOWER(?)
-        )
+        AND jobs_fts MATCH ?
+      ORDER BY rank
+      LIMIT 100
     `);
 
-    const searchTerm = `%${query}%`;
-
     try {
-      stmt.bind([searchTerm, searchTerm, searchTerm]);
+      stmt.bind([query]);
 
       while (stmt.step()) {
         const row = stmt.get({});
@@ -369,6 +436,9 @@ class JobDatabase {
     } finally {
       stmt.finalize();
     }
+
+    // Cache the results
+    this.setCachedResults(cacheKey, results);
 
     return results;
   }
@@ -376,7 +446,16 @@ class JobDatabase {
   async searchJobsByLocation(query: string, locationName: string): Promise<TransformedJob[]> {
     if (!this.initialized) await this.init();
 
+    // Check cache first
+    const cacheKey = this.getCacheKey(query, locationName);
+    const cachedResults = this.getCachedResults(cacheKey);
+    if (cachedResults) {
+      return cachedResults;
+    }
+
     const results: TransformedJob[] = [];
+
+    // Use FTS for faster search within location
     const stmt = this.db.prepare(`
       SELECT
         j.id,
@@ -389,23 +468,22 @@ class JobDatabase {
         l.address,
         l.latitude,
         l.longitude,
-        ROW_NUMBER() OVER (PARTITION BY j.id ORDER BY l.id) as location_rank
+        ROW_NUMBER() OVER (PARTITION BY j.id ORDER BY l.id) as location_rank,
+        j.rowid
       FROM jobs j
+      INNER JOIN jobs_fts ON jobs_fts.rowid = j.rowid
       INNER JOIN locations l ON j.id = l.job_id
       WHERE l.latitude IS NOT NULL AND l.longitude IS NOT NULL
         AND (LOWER(l.city) LIKE LOWER(?) OR LOWER(l.address) LIKE LOWER(?))
-        AND (
-          LOWER(j.title) LIKE LOWER(?) OR
-          LOWER(j.company) LIKE LOWER(?) OR
-          LOWER(j.categories) LIKE LOWER(?)
-        )
+        AND jobs_fts MATCH ?
+      ORDER BY rank
+      LIMIT 100
     `);
 
-    const searchTerm = `%${query}%`;
     const locationTerm = `%${locationName}%`;
 
     try {
-      stmt.bind([locationTerm, locationTerm, searchTerm, searchTerm, searchTerm]);
+      stmt.bind([locationTerm, locationTerm, query]);
 
       while (stmt.step()) {
         const row = stmt.get({});
@@ -432,6 +510,9 @@ class JobDatabase {
     } finally {
       stmt.finalize();
     }
+
+    // Cache the results
+    this.setCachedResults(cacheKey, results);
 
     return results;
   }

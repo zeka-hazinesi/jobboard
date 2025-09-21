@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback, useMemo, memo } from "react";
 import { Search, X } from "lucide-react";
 
 interface SearchBarProps {
@@ -9,10 +9,11 @@ interface SearchBarProps {
   className?: string;
 }
 
-export function SearchBar({ onSearch, placeholder = "Suche nach Jobs, Unternehmen, oder Kategorien...", className = "" }: SearchBarProps) {
+export const SearchBar = memo(function SearchBar({ onSearch, placeholder = "Suche nach Jobs, Unternehmen, oder Kategorien...", className = "" }: SearchBarProps) {
   const [query, setQuery] = useState("");
   const [isActive, setIsActive] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
+  const debounceTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
     if (isActive && inputRef.current) {
@@ -20,43 +21,69 @@ export function SearchBar({ onSearch, placeholder = "Suche nach Jobs, Unternehme
     }
   }, [isActive]);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  // Memoize callbacks to prevent unnecessary re-renders
+  const handleSubmit = useCallback((e: React.FormEvent) => {
     e.preventDefault();
     if (query.trim()) {
       onSearch(query.trim());
     }
-  };
+  }, [query, onSearch]);
 
-  const handleClear = () => {
+  const handleClear = useCallback(() => {
     setQuery("");
     onSearch("");
-  };
+  }, [onSearch]);
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
     setQuery(value);
 
+    // Clear previous timeout
+    if (debounceTimeoutRef.current) {
+      clearTimeout(debounceTimeoutRef.current);
+    }
+
     // Debounced search - only search when user stops typing for 300ms
-    const timeoutId = setTimeout(() => {
+    debounceTimeoutRef.current = setTimeout(() => {
       if (value.trim()) {
         onSearch(value.trim());
       } else {
         onSearch("");
       }
     }, 300);
+  }, [onSearch]);
 
-    return () => clearTimeout(timeoutId);
-  };
+  // Cleanup timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (debounceTimeoutRef.current) {
+        clearTimeout(debounceTimeoutRef.current);
+      }
+    };
+  }, []);
+
+  // Memoize icon classes
+  const searchIconClass = useMemo(() =>
+    `absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 ${
+      isActive ? 'text-[#1065bb]' : 'text-gray-400'
+    }`,
+    [isActive]
+  );
+
+  const inputClass = useMemo(() =>
+    `w-full pl-10 pr-10 py-3 rounded-lg border-2 transition-all duration-200 font-nunito text-sm ${
+      isActive
+        ? 'border-[#1065bb] bg-blue-50 text-[#1065bb] placeholder-[#1065bb]/60'
+        : 'border-gray-200 bg-white text-gray-700 placeholder-gray-400 hover:border-[#1065bb]/50 focus:border-[#1065bb] focus:bg-blue-50'
+    }`,
+    [isActive]
+  );
 
   return (
     <div className={`relative ${className}`}>
       <form onSubmit={handleSubmit} className="relative">
         <div className="relative">
-          <Search
-            className={`absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 ${
-              isActive ? 'text-[#1065bb]' : 'text-gray-400'
-            }`}
-          />
+          <Search className={searchIconClass} />
           <input
             ref={inputRef}
             type="text"
@@ -65,11 +92,7 @@ export function SearchBar({ onSearch, placeholder = "Suche nach Jobs, Unternehme
             onFocus={() => setIsActive(true)}
             onBlur={() => setIsActive(false)}
             placeholder={placeholder}
-            className={`w-full pl-10 pr-10 py-3 rounded-lg border-2 transition-all duration-200 font-nunito text-sm ${
-              isActive
-                ? 'border-[#1065bb] bg-blue-50 text-[#1065bb] placeholder-[#1065bb]/60'
-                : 'border-gray-200 bg-white text-gray-700 placeholder-gray-400 hover:border-[#1065bb]/50 focus:border-[#1065bb] focus:bg-blue-50'
-            }`}
+            className={inputClass}
           />
           {query && (
             <button
@@ -92,4 +115,4 @@ export function SearchBar({ onSearch, placeholder = "Suche nach Jobs, Unternehme
       )}
     </div>
   );
-}
+});

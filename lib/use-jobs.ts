@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { jobDatabase, type TransformedJob } from './database';
 import { initializeDatabase } from './init-database';
 
@@ -13,6 +13,9 @@ export function useJobs(selectedLocation?: Location | null, searchQuery?: string
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [initialized, setInitialized] = useState(false);
+
+  // Memoize the dependencies to prevent unnecessary effect runs
+  const dependencies = useMemo(() => [selectedLocation, searchQuery, initialized], [selectedLocation, searchQuery, initialized]);
 
   // Initialize database on first load
   useEffect(() => {
@@ -54,9 +57,9 @@ export function useJobs(selectedLocation?: Location | null, searchQuery?: string
     };
 
     init();
-  }, [selectedLocation, searchQuery, initialized]);
+  }, dependencies);
 
-  const searchJobs = async (query: string): Promise<TransformedJob[]> => {
+  const searchJobs = useCallback(async (query: string): Promise<TransformedJob[]> => {
     try {
       if (!initialized) {
         await initializeDatabase();
@@ -68,13 +71,14 @@ export function useJobs(selectedLocation?: Location | null, searchQuery?: string
       console.error('Error searching jobs:', err);
       return [];
     }
-  };
+  }, [initialized]);
 
-  return {
+  // Memoize the return object to prevent unnecessary re-renders
+  return useMemo(() => ({
     jobs,
     loading,
     error,
     searchJobs,
     initialized
-  };
+  }), [jobs, loading, error, searchJobs, initialized]);
 }
