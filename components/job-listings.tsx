@@ -3,21 +3,9 @@
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { MapPin, Building, ExternalLink } from "lucide-react";
-import { useState, useEffect, useRef } from "react";
-
-interface Job {
-  id: string;
-  title: string;
-  company: string;
-  location: string;
-  salary: string;
-  tags: string[];
-  logo: string;
-  originalId?: string; // Keep original ID for reference
-  latitude?: number;
-  longitude?: number;
-  link?: string; // Job application link
-}
+import { useRef, useEffect } from "react";
+import { useJobs } from "@/lib/use-jobs";
+import type { TransformedJob } from "@/lib/database";
 
 interface Location {
   name: string;
@@ -33,36 +21,8 @@ interface JobListingsProps {
 }
 
 export function JobListings({ selectedLocation, hoveredJobId, onJobHover, selectedJobId }: JobListingsProps) {
-  const [allJobs, setAllJobs] = useState<Job[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const { jobs, loading, error } = useJobs(selectedLocation);
   const jobItemRefs = useRef<{ [key: string]: HTMLDivElement | null }>({});
-
-  useEffect(() => {
-    const fetchJobs = async () => {
-      try {
-        const response = await fetch("/api/jobs");
-        if (!response.ok) {
-          throw new Error("Failed to fetch jobs");
-        }
-        const jobsData = await response.json();
-        setAllJobs(jobsData);
-      } catch (err) {
-        setError(err instanceof Error ? err.message : "An error occurred");
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchJobs();
-  }, []);
-
-  // Filter jobs based on selected location
-  const filteredJobs = selectedLocation
-    ? allJobs.filter(job =>
-        job.location && job.location.toLowerCase().includes(selectedLocation.name.toLowerCase())
-      )
-    : allJobs;
 
   // Scroll to selected job when selectedJobId changes
   useEffect(() => {
@@ -111,14 +71,14 @@ export function JobListings({ selectedLocation, hoveredJobId, onJobHover, select
   return (
     <div className="h-full overflow-y-auto">
       <div className="p-3 space-y-4">
-        {filteredJobs.length === 0 && selectedLocation ? (
+        {jobs.length === 0 && selectedLocation ? (
           <div className="flex items-center justify-center p-8 rounded-lg border border-gray-200 bg-gray-50">
             <p className="text-gray-600 text-center font-nunito">
               No jobs found in {selectedLocation.name}
             </p>
           </div>
         ) : (
-          filteredJobs.map((job) => (
+          jobs.map((job) => (
           <div
             key={job.id}
             ref={(el) => { jobItemRefs.current[job.id] = el; }}

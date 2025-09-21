@@ -1,8 +1,10 @@
 "use client";
 
 import { MapContainer, TileLayer, Marker, Popup, useMap } from "react-leaflet";
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import L from "leaflet";
+import { useJobs } from "@/lib/use-jobs";
+import type { TransformedJob } from "@/lib/database";
 
 // Fix for default markers in react-leaflet
 delete (L.Icon.Default.prototype as any)._getIconUrl;
@@ -15,18 +17,10 @@ L.Icon.Default.mergeOptions({
     "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png",
 });
 
-interface Job {
+interface Job extends TransformedJob {
   _id: string;
-  company: string;
   name: string; // This will be mapped from title
-  actualCity: string; // This will be mapped from locations[0].city
-  latitude: number;
-  longitude: number;
-  workplace?: string;
-  title: string; // Added to match API response
-  location: string; // Added to match API response
-  originalId?: string; // Keep original ID for reference
-  link?: string; // Job application link
+  actualCity: string; // This will be mapped from location
 }
 
 interface SwissMapClientProps {
@@ -52,54 +46,23 @@ function MapUpdater({ centerCoordinates, zoomLevel }: { centerCoordinates?: [num
 }
 
 export default function SwissMapClient({ centerCoordinates, selectedLocationName, zoomLevel = 8, hoveredJobId, onJobHover, onJobClick }: SwissMapClientProps) {
-  const [jobs, setJobs] = useState<Job[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { jobs: rawJobs, loading } = useJobs();
 
-  useEffect(() => {
-    const loadJobs = async () => {
-      try {
-        const response = await fetch("/api/jobs");
-        const jobsData = await response.json();
-
-        // Transform API response to match expected format
-        const transformedJobs = jobsData
-          .map((job: any) => {
-            return {
-              _id: job.id, // Use the unique ID from API
-              company: job.company,
-              name: job.title, // Map title to name for backward compatibility
-              actualCity: job.location.split(', ').pop() || 'Unknown', // Extract city from location string
-              latitude: job.latitude,
-              longitude: job.longitude,
-              workplace: job.workplace,
-              title: job.title,
-              location: job.location,
-              originalId: job.originalId,
-              link: job.link
-            };
-          });
-
-        // Filter jobs within Switzerland bounds
-        const validJobs = transformedJobs
-          .filter(
-            (job: Job) =>
-              job.latitude >= 45.8 &&
-              job.latitude <= 47.8 && // Switzerland latitude bounds
-              job.longitude >= 5.9 &&
-              job.longitude <= 10.5 // Switzerland longitude bounds
-          );
-
-        console.log(`Total jobs: ${jobsData.length}, Transformed jobs: ${transformedJobs.length}, Valid jobs (Switzerland): ${validJobs.length}`);
-        setJobs(validJobs as Job[]);
-      } catch (error) {
-        console.error("Error loading jobs:", error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    loadJobs();
-  }, []);
+  // Transform jobs to include additional fields needed by the map
+  const jobs: Job[] = rawJobs
+    .map((job) => ({
+      ...job,
+      _id: job.id,
+      name: job.title,
+      actualCity: job.location.split(', ').pop() || 'Unknown',
+    }))
+    .filter(
+      (job) =>
+        job.latitude >= 45.8 &&
+        job.latitude <= 47.8 && // Switzerland latitude bounds
+        job.longitude >= 5.9 &&
+        job.longitude <= 10.5 // Switzerland longitude bounds
+    );
 
   // Default to Switzerland center, but use provided coordinates if available
   const center: [number, number] = centerCoordinates || [46.8182, 8.2275];
