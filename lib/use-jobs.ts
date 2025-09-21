@@ -8,7 +8,7 @@ interface Location {
   longitude: number;
 }
 
-export function useJobs(selectedLocation?: Location | null) {
+export function useJobs(selectedLocation?: Location | null, searchQuery?: string) {
   const [jobs, setJobs] = useState<TransformedJob[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -26,12 +26,21 @@ export function useJobs(selectedLocation?: Location | null) {
           setInitialized(true);
         }
 
-        // Load jobs based on selected location
+        // Load jobs based on search query and/or selected location
         let jobsData: TransformedJob[];
 
-        if (selectedLocation) {
+        if (searchQuery && searchQuery.trim()) {
+          // Search across all jobs or within location
+          if (selectedLocation) {
+            jobsData = await jobDatabase.searchJobsByLocation(searchQuery, selectedLocation.name);
+          } else {
+            jobsData = await jobDatabase.searchJobs(searchQuery);
+          }
+        } else if (selectedLocation) {
+          // Load jobs for selected location
           jobsData = await jobDatabase.getJobsByLocation(selectedLocation.name);
         } else {
+          // Load all jobs
           jobsData = await jobDatabase.getAllJobs();
         }
 
@@ -45,7 +54,7 @@ export function useJobs(selectedLocation?: Location | null) {
     };
 
     init();
-  }, [selectedLocation, initialized]);
+  }, [selectedLocation, searchQuery, initialized]);
 
   const searchJobs = async (query: string): Promise<TransformedJob[]> => {
     try {

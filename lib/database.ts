@@ -373,6 +373,69 @@ class JobDatabase {
     return results;
   }
 
+  async searchJobsByLocation(query: string, locationName: string): Promise<TransformedJob[]> {
+    if (!this.initialized) await this.init();
+
+    const results: TransformedJob[] = [];
+    const stmt = this.db.prepare(`
+      SELECT
+        j.id,
+        j.original_id,
+        j.title,
+        j.company,
+        j.link,
+        j.categories,
+        l.city,
+        l.address,
+        l.latitude,
+        l.longitude,
+        ROW_NUMBER() OVER (PARTITION BY j.id ORDER BY l.id) as location_rank
+      FROM jobs j
+      INNER JOIN locations l ON j.id = l.job_id
+      WHERE l.latitude IS NOT NULL AND l.longitude IS NOT NULL
+        AND (LOWER(l.city) LIKE LOWER(?) OR LOWER(l.address) LIKE LOWER(?))
+        AND (
+          LOWER(j.title) LIKE LOWER(?) OR
+          LOWER(j.company) LIKE LOWER(?) OR
+          LOWER(j.categories) LIKE LOWER(?)
+        )
+    `);
+
+    const searchTerm = `%${query}%`;
+    const locationTerm = `%${locationName}%`;
+
+    try {
+      stmt.bind([locationTerm, locationTerm, searchTerm, searchTerm, searchTerm]);
+
+      while (stmt.step()) {
+        const row = stmt.get({});
+        const city = row.city || 'Location not specified';
+        const address = row.address || '';
+        const categories = row.categories ? JSON.parse(row.categories) : [];
+
+        const uniqueId = `${row.original_id}-${row.location_rank}`;
+
+        results.push({
+          id: uniqueId,
+          originalId: row.original_id,
+          title: row.title || 'No Title',
+          company: row.company || 'Unknown Company',
+          location: address ? `${address}, ${city}` : city,
+          latitude: row.latitude,
+          longitude: row.longitude,
+          link: row.link,
+          salary: 'Salary not specified',
+          tags: categories,
+          logo: '/globe.svg'
+        });
+      }
+    } finally {
+      stmt.finalize();
+    }
+
+    return results;
+  }
+
   close(): void {
     if (this.db) {
       this.db.close();

@@ -5,6 +5,8 @@ import { Header } from "@/components/header";
 import { LocationFilters } from "@/components/location-filters";
 import { JobListings } from "@/components/job-listings";
 import { SwissMap } from "@/components/swiss-map";
+import { SearchBar } from "@/components/search-bar";
+import { useJobs } from "@/lib/use-jobs";
 
 interface Location {
   name: string;
@@ -16,9 +18,16 @@ export default function HomePage() {
   const [selectedLocation, setSelectedLocation] = useState<Location | null>(null);
   const [hoveredJobId, setHoveredJobId] = useState<string | null>(null);
   const [selectedJobId, setSelectedJobId] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState<string>("");
+
+  const { jobs, loading, error } = useJobs(selectedLocation, searchQuery);
 
   const handleLocationClick = (location: Location | null) => {
     setSelectedLocation(location);
+  };
+
+  const handleSearch = (query: string) => {
+    setSearchQuery(query);
   };
 
   const handleJobClick = (jobId: string) => {
@@ -39,6 +48,11 @@ export default function HomePage() {
               </h1>
             </div>
 
+            {/* Search Section */}
+            <div className="flex-shrink-0 mb-4">
+              <SearchBar onSearch={handleSearch} />
+            </div>
+
             {/* Filters Section */}
             <div className="flex-shrink-0">
               <LocationFilters
@@ -50,10 +64,14 @@ export default function HomePage() {
             {/* Job List Section */}
             <div className="flex-1 overflow-hidden">
               <JobListings
+                jobs={jobs}
+                loading={loading}
+                error={error}
                 selectedLocation={selectedLocation}
                 hoveredJobId={hoveredJobId}
                 onJobHover={setHoveredJobId}
                 selectedJobId={selectedJobId}
+                searchQuery={searchQuery}
               />
             </div>
           </div>

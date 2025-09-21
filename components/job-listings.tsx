@@ -4,7 +4,6 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { MapPin, Building, ExternalLink } from "lucide-react";
 import { useRef, useEffect } from "react";
-import { useJobs } from "@/lib/use-jobs";
 import type { TransformedJob } from "@/lib/database";
 
 interface Location {
@@ -14,14 +13,17 @@ interface Location {
 }
 
 interface JobListingsProps {
+  jobs: TransformedJob[];
+  loading: boolean;
+  error: string | null;
   selectedLocation?: Location | null;
   hoveredJobId?: string | null;
   onJobHover?: (jobId: string | null) => void;
   selectedJobId?: string | null;
+  searchQuery?: string;
 }
 
-export function JobListings({ selectedLocation, hoveredJobId, onJobHover, selectedJobId }: JobListingsProps) {
-  const { jobs, loading, error } = useJobs(selectedLocation);
+export function JobListings({ jobs, loading, error, selectedLocation, hoveredJobId, onJobHover, selectedJobId, searchQuery }: JobListingsProps) {
   const jobItemRefs = useRef<{ [key: string]: HTMLDivElement | null }>({});
 
   // Scroll to selected job when selectedJobId changes
@@ -71,10 +73,28 @@ export function JobListings({ selectedLocation, hoveredJobId, onJobHover, select
   return (
     <div className="h-full overflow-y-auto">
       <div className="p-3 space-y-4">
-        {jobs.length === 0 && selectedLocation ? (
+        {/* Search Results Indicator */}
+        {searchQuery && (
+          <div className="flex items-center justify-between p-3 bg-blue-50 border border-blue-200 rounded-lg">
+            <div className="flex items-center space-x-2">
+              <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+              <p className="text-sm text-blue-800 font-nunito">
+                {jobs.length} {jobs.length === 1 ? 'Job' : 'Jobs'} für <span className="font-medium">"{searchQuery}"</span>
+              </p>
+            </div>
+          </div>
+        )}
+
+        {jobs.length === 0 && selectedLocation && !searchQuery ? (
           <div className="flex items-center justify-center p-8 rounded-lg border border-gray-200 bg-gray-50">
             <p className="text-gray-600 text-center font-nunito">
               No jobs found in {selectedLocation.name}
+            </p>
+          </div>
+        ) : jobs.length === 0 && searchQuery ? (
+          <div className="flex items-center justify-center p-8 rounded-lg border border-gray-200 bg-gray-50">
+            <p className="text-gray-600 text-center font-nunito">
+              Keine Jobs gefunden für "{searchQuery}"
             </p>
           </div>
         ) : (
