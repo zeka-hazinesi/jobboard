@@ -4,10 +4,10 @@ import { MapContainer, TileLayer, Marker, Popup, useMap } from "react-leaflet";
 import { useEffect } from "react";
 import L from "leaflet";
 import { useJobs } from "@/lib/use-jobs";
-import type { TransformedJob } from "@/lib/database";
+import type { TransformedJob } from "@/lib/jobs-data-service";
 
 // Fix for default markers in react-leaflet
-delete (L.Icon.Default.prototype as any)._getIconUrl;
+delete (L.Icon.Default.prototype as unknown as { _getIconUrl?: unknown })._getIconUrl;
 L.Icon.Default.mergeOptions({
   iconRetinaUrl:
     "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon-2x.png",

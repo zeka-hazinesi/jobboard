@@ -4,7 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { MapPin, Building, ExternalLink } from "lucide-react";
 import { useRef, useEffect, memo, useMemo, useCallback } from "react";
-import type { TransformedJob } from "@/lib/database";
+import type { TransformedJob } from "@/lib/jobs-data-service";
 
 interface Location {
   name: string;
@@ -136,7 +136,7 @@ export const JobListings = memo(function JobListings({ jobs, loading, error, sel
         <div className="flex items-center space-x-2">
           <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
           <p className="text-sm text-blue-800 font-nunito">
-            {jobs.length} {jobs.length === 1 ? 'Job' : 'Jobs'} für <span className="font-medium">"{searchQuery}"</span>
+            {jobs.length} {jobs.length === 1 ? 'Job' : 'Jobs'} für <span className="font-medium">&quot;{searchQuery}&quot;</span>
           </p>
         </div>
       </div>
@@ -159,7 +159,7 @@ export const JobListings = memo(function JobListings({ jobs, loading, error, sel
       return (
         <div className="flex items-center justify-center p-8 rounded-lg border border-gray-200 bg-gray-50">
           <p className="text-gray-600 text-center font-nunito">
-            Keine Jobs gefunden für "{searchQuery}"
+            Keine Jobs gefunden für &quot;{searchQuery}&quot;
           </p>
         </div>
       );

@@ -10,7 +10,6 @@
   },
   "dependencies": {
     "@radix-ui/react-slot": "^1.2.3",
-    "@sqlite.org/sqlite-wasm": "^3.50.4-build1",
     "@types/leaflet": "^1.9.20",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",

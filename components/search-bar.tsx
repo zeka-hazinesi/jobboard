@@ -109,7 +109,7 @@ export const SearchBar = memo(function SearchBar({ onSearch, placeholder = "Such
       {query && (
         <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-10 p-3">
           <p className="text-sm text-gray-600 font-nunito">
-            Suche nach: <span className="font-medium text-[#1065bb]">"{query}"</span>
+            Suche nach: <span className="font-medium text-[#1065bb]">&quot;{query}&quot;</span>
           </p>
         </div>
       )}

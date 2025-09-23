@@ -1,6 +1,5 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
-import { jobDatabase, type TransformedJob } from './database';
-import { initializeDatabase } from './init-database';
+import { jobsDataService, type TransformedJob } from './jobs-data-service';
 
 interface Location {
   name: string;
@@ -14,10 +13,7 @@ export function useJobs(selectedLocation?: Location | null, searchQuery?: string
   const [error, setError] = useState<string | null>(null);
   const [initialized, setInitialized] = useState(false);
 
-  // Memoize the dependencies to prevent unnecessary effect runs
-  const dependencies = useMemo(() => [selectedLocation, searchQuery, initialized], [selectedLocation, searchQuery, initialized]);
-
-  // Initialize database on first load
+  // Initialize data service on first load
   useEffect(() => {
     const init = async () => {
       try {
@@ -25,7 +21,7 @@ export function useJobs(selectedLocation?: Location | null, searchQuery?: string
         setError(null);
 
         if (!initialized) {
-          await initializeDatabase();
+          await jobsDataService.init();
           setInitialized(true);
         }
 
@@ -35,16 +31,16 @@ export function useJobs(selectedLocation?: Location | null, searchQuery?: string
         if (searchQuery && searchQuery.trim()) {
           // Search across all jobs or within location
           if (selectedLocation) {
-            jobsData = await jobDatabase.searchJobsByLocation(searchQuery, selectedLocation.name);
+            jobsData = await jobsDataService.searchJobsByLocation(searchQuery, selectedLocation.name);
           } else {
-            jobsData = await jobDatabase.searchJobs(searchQuery);
+            jobsData = await jobsDataService.searchJobs(searchQuery);
           }
         } else if (selectedLocation) {
           // Load jobs for selected location
-          jobsData = await jobDatabase.getJobsByLocation(selectedLocation.name);
+          jobsData = await jobsDataService.getJobsByLocation(selectedLocation.name);
         } else {
           // Load all jobs
-          jobsData = await jobDatabase.getAllJobs();
+          jobsData = await jobsDataService.getAllJobs();
         }
 
         setJobs(jobsData);
@@ -57,16 +53,16 @@ export function useJobs(selectedLocation?: Location | null, searchQuery?: string
     };
 
     init();
-  }, dependencies);
+  }, [initialized, selectedLocation, searchQuery]);
 
   const searchJobs = useCallback(async (query: string): Promise<TransformedJob[]> => {
     try {
       if (!initialized) {
-        await initializeDatabase();
+        await jobsDataService.init();
         setInitialized(true);
       }
 
-      return await jobDatabase.searchJobs(query);
+      return await jobsDataService.searchJobs(query);
     } catch (err) {
       console.error('Error searching jobs:', err);
       return [];
