@@ -1,6 +1,9 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  // Increase the size limits for large JSON files
+  serverExternalPackages: ['minisearch'],
+
   webpack: (config: any) => {
     // Configure WASM support
     config.experiments = {
@@ -16,6 +19,7 @@ const nextConfig: NextConfig = {
 
     return config;
   },
+
 };
 
 export default nextConfig;

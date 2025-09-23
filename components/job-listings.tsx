@@ -2,9 +2,10 @@
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
 import { MapPin, Building, ExternalLink } from "lucide-react";
 import { useRef, useEffect, memo, useMemo, useCallback } from "react";
-import type { TransformedJob } from "@/lib/jobs-data-service";
+import type { TransformedJob } from "@/lib/optimized-jobs-data-service";
 
 interface Location {
   name: string;
@@ -21,9 +22,13 @@ interface JobListingsProps {
   onJobHover?: (jobId: string | null) => void;
   selectedJobId?: string | null;
   searchQuery?: string;
+  onJobClick?: (jobId: string) => void;
+  hasMore?: boolean;
+  totalJobs?: number;
+  onLoadMore?: () => Promise<void>;
 }
 
-export const JobListings = memo(function JobListings({ jobs, loading, error, selectedLocation, hoveredJobId, onJobHover, selectedJobId, searchQuery }: JobListingsProps) {
+export const JobListings = memo(function JobListings({ jobs, loading, error, selectedLocation, hoveredJobId, onJobHover, selectedJobId, searchQuery, onJobClick, hasMore, totalJobs, onLoadMore }: JobListingsProps) {
   const jobItemRefs = useRef<{ [key: string]: HTMLDivElement | null }>({});
 
   // Scroll to selected job when selectedJobId changes
@@ -49,6 +54,10 @@ export const JobListings = memo(function JobListings({ jobs, loading, error, sel
       onJobHover?.(null);
     }, [onJobHover]);
 
+    const handleJobItemClick = useCallback(() => {
+      onJobClick?.(job.id);
+    }, [onJobClick, job.id]);
+
     const handleJobClick = useCallback(() => {
       if (job.link) {
         window.open(job.link, '_blank');
@@ -68,7 +77,7 @@ export const JobListings = memo(function JobListings({ jobs, loading, error, sel
           ? 'border-green-500 bg-green-50 shadow-lg ring-2 ring-green-200'
           : isHovered
             ? 'border-[#1065bb] bg-blue-50 shadow-md'
-            : 'border-gray-200 hover:border-[#1065bb] bg-white hover:shadow-md'
+            : 'border-gray-200 hover:border-[#1065bb] bg-white hover:shadow-md hover:bg-blue-25'
       }`,
       [isSelected, isHovered]
     );
@@ -79,6 +88,7 @@ export const JobListings = memo(function JobListings({ jobs, loading, error, sel
         className={itemClass}
         onMouseEnter={handleMouseEnter}
         onMouseLeave={handleMouseLeave}
+        onClick={handleJobItemClick}
       >
         <div className="flex items-start space-x-3 flex-1 min-w-0">
           <img
@@ -127,21 +137,33 @@ export const JobListings = memo(function JobListings({ jobs, loading, error, sel
     );
   });
 
-  // Memoized search results indicator
-  const searchIndicator = useMemo(() => {
-    if (!searchQuery) return null;
+  // Memoized job count indicator (always visible)
+  const jobCountIndicator = useMemo(() => {
+    const total = totalJobs || jobs.length;
+    const loaded = jobs.length;
+    const showLoadMore = hasMore && !loading;
 
     return (
       <div className="flex items-center justify-between p-3 bg-blue-50 border border-blue-200 rounded-lg">
         <div className="flex items-center space-x-2">
           <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
           <p className="text-sm text-blue-800 font-nunito">
-            {jobs.length} {jobs.length === 1 ? 'Job' : 'Jobs'} für <span className="font-medium">&quot;{searchQuery}&quot;</span>
+            {loaded} von {total} {loaded === 1 ? 'Job' : 'Jobs'} {searchQuery ? `für "${searchQuery}"` : 'verfügbar'}
           </p>
         </div>
+        {showLoadMore && (
+          <Button
+            variant="outline"
+            size="sm"
+            className="text-xs h-7 px-3"
+            onClick={onLoadMore}
+          >
+            Mehr laden
+          </Button>
+        )}
       </div>
     );
-  }, [searchQuery, jobs.length]);
+  }, [jobs.length, totalJobs, searchQuery, hasMore, loading, onLoadMore]);
 
   // Memoized empty state messages
   const emptyStateMessage = useMemo(() => {
@@ -168,20 +190,27 @@ export const JobListings = memo(function JobListings({ jobs, loading, error, sel
     return null;
   }, [jobs.length, selectedLocation, searchQuery]);
 
-  if (loading) {
+  if (loading && jobs.length === 0) {
     return (
       <div className="h-full overflow-y-auto">
         <div className="p-3 space-y-4">
-          {[...Array(6)].map((_, i) => (
-            <div key={i} className="flex items-start gap-4 p-3 rounded-lg border border-gray-200 animate-pulse bg-white">
-              <div className="w-8 h-8 bg-gray-200 rounded"></div>
-              <div className="flex-1">
-                <div className="h-4 bg-gray-200 rounded w-3/4 mb-2"></div>
-                <div className="h-4 bg-gray-200 rounded w-1/2 mb-3"></div>
+          {/* Job count skeleton */}
+          <Skeleton className="h-12 w-full rounded-lg" />
+
+          {/* Job items skeleton */}
+          {[...Array(8)].map((_, i) => (
+            <div key={i} className="flex items-start gap-4 p-4 rounded-lg border border-gray-200 bg-white">
+              <Skeleton className="w-8 h-8 rounded flex-shrink-0" />
+              <div className="flex-1 space-y-2">
+                <Skeleton className="h-4 w-3/4" />
+                <div className="flex items-center space-x-4">
+                  <Skeleton className="h-4 w-24" />
+                  <Skeleton className="h-4 w-32" />
+                </div>
               </div>
-              <div className="flex flex-col gap-2">
-                <div className="h-8 bg-gray-200 rounded w-32"></div>
-                <div className="h-8 bg-gray-200 rounded w-32"></div>
+              <div className="flex flex-col gap-2 flex-shrink-0">
+                <Skeleton className="h-8 w-32" />
+                <Skeleton className="h-8 w-32" />
               </div>
             </div>
           ))}
@@ -205,12 +234,18 @@ export const JobListings = memo(function JobListings({ jobs, loading, error, sel
   return (
     <div className="h-full overflow-y-auto">
       <div className="p-3 space-y-4">
-        {searchIndicator}
+        {jobCountIndicator}
 
         {emptyStateMessage || (
-          jobs.map((job) => (
-            <JobItem key={job.id} job={job} />
-          ))
+          jobs.map((job, index) => {
+            // Safety check for duplicate IDs
+            const duplicateIndex = jobs.findIndex((j, i) => i !== index && j.id === job.id);
+            if (duplicateIndex !== -1) {
+              console.warn(`⚠️ Duplicate job ID detected: ${job.id} (at index ${index} and ${duplicateIndex})`);
+            }
+
+            return <JobItem key={job.id} job={job} />;
+          })
         )}
       </div>
     </div>
